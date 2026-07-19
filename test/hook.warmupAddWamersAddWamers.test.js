@@ -1648,6 +1648,52 @@ describe('Serverless warmup plugin warmup:warmers:addWarmers:addWarmers hook', (
 		);
 	});
 
+	it('Should use the connectionTimeout from options if present', async () => {
+		const serverless = getServerlessConfig({
+			service: {
+				custom: {
+					warmup: {
+						default: {
+							enabled: true,
+							connectionTimeout: 12345,
+						},
+					},
+				},
+				functions: { someFunc1: { name: 'someFunc1' }, someFunc2: { name: 'someFunc2' } },
+			},
+		});
+		const pluginUtils = getPluginUtils();
+		const plugin = new WarmUp(serverless, {}, pluginUtils);
+
+		await plugin.hooks['before:warmup:addWarmers:addWarmers']();
+		await plugin.hooks['warmup:addWarmers:addWarmers']();
+
+		expect(plugin.configsByWarmer.default.connectionTimeout).toBe(12345);
+	});
+
+	it('Should use the invocationBatchSize from options if present', async () => {
+		const serverless = getServerlessConfig({
+			service: {
+				custom: {
+					warmup: {
+						default: {
+							enabled: true,
+							invocationBatchSize: 42,
+						},
+					},
+				},
+				functions: { someFunc1: { name: 'someFunc1' }, someFunc2: { name: 'someFunc2' } },
+			},
+		});
+		const pluginUtils = getPluginUtils();
+		const plugin = new WarmUp(serverless, {}, pluginUtils);
+
+		await plugin.hooks['before:warmup:addWarmers:addWarmers']();
+		await plugin.hooks['warmup:addWarmers:addWarmers']();
+
+		expect(plugin.configsByWarmer.default.invocationBatchSize).toBe(42);
+	});
+
 	it('Should unset the environment variables from options as default', async () => {
 		const serverless = getServerlessConfig({
 			service: {

@@ -220,6 +220,8 @@ class WarmUp {
 			warmerConfig.verbose,
 			this.provider.getRegion(),
 			handlerFolder,
+			warmerConfig.connectionTimeout,
+			warmerConfig.invocationBatchSize,
 		);
 
 		if (warmerConfig.role === undefined) {

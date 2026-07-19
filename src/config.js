@@ -51,6 +51,14 @@ function getWarmerConfig(config, defaultOpts) {
 					},
 		memorySize: config.memorySize !== undefined ? config.memorySize : defaultOpts.memorySize,
 		timeout: config.timeout !== undefined ? config.timeout : defaultOpts.timeout,
+		connectionTimeout:
+			config.connectionTimeout !== undefined
+				? config.connectionTimeout
+				: defaultOpts.connectionTimeout,
+		invocationBatchSize:
+			config.invocationBatchSize !== undefined
+				? config.invocationBatchSize
+				: defaultOpts.invocationBatchSize,
 		environment: config.environment !== undefined ? config.environment : defaultOpts.environment,
 		tracing: config.tracing !== undefined ? config.tracing : defaultOpts.tracing,
 		verbose: config.verbose !== undefined ? config.verbose : defaultOpts.verbose,
@@ -162,6 +170,8 @@ function getConfigsByWarmer({ service, classes }, stage) {
 			patterns: [],
 		},
 		timeout: 10,
+		connectionTimeout: 10000,
+		invocationBatchSize: 20,
 		environment: Object.keys(service.provider.environment || []).reduce((obj, k) => {
 			obj[k] = undefined;
 			return obj;
