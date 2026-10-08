@@ -165,9 +165,7 @@ function getConcurrency(func, envVars) {
   return concurrency;
 }
 
-async function invokeFunction(func) {
-  const concurrency = getConcurrency(func, process.env);
-
+async function invokeFunction(func, concurrency) {
   const clientContext = func.config.clientContext !== undefined
     ? func.config.clientContext
     : func.config.payload;
@@ -197,12 +195,34 @@ async function invokeFunction(func) {
 export const warmUp = async (event, context) => {
   logVerbose('Warm Up Start');
 
+  // BATCH_SIZE bounds invocations in flight, not functions. Each function fans
+  // out to its own concurrency, so batching by function count leaves the socket
+  // pressure unbounded: 20 functions at concurrency 7 is 140 parallel requests
+  // against an agent that caps at 50 sockets. A single function whose own
+  // concurrency exceeds BATCH_SIZE still goes out alone, since it cannot be split.
   const results = [];
-  for (let offset = 0; offset < functions.length; offset += BATCH_SIZE) {
-    const batch = functions.slice(offset, offset + BATCH_SIZE);
-    const batchResults = await Promise.all(batch.map(invokeFunction));
-    results.push(...batchResults);
+  let batch = [];
+  let batchInvocations = 0;
+
+  const flush = async () => {
+    if (batch.length === 0) return;
+    const pending = batch;
+    batch = [];
+    batchInvocations = 0;
+    results.push(
+      ...(await Promise.all(pending.map(({ func, concurrency }) => invokeFunction(func, concurrency))))
+    );
+  };
+
+  for (const func of functions) {
+    const concurrency = getConcurrency(func, process.env);
+    if (batch.length > 0 && batchInvocations + concurrency > BATCH_SIZE) {
+      await flush();
+    }
+    batch.push({ func, concurrency });
+    batchInvocations += concurrency;
   }
+  await flush();
 
   const failureCount = results.filter(succeeded => !succeeded).length;
   logVerbose(\`Warm Up Finished with \${failureCount} invoke errors\`);
